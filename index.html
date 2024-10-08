@@ -17,9 +17,60 @@
        width: 100%;
       }
 
+      #year-filter {
+        width: 100px;
+        visibility: hidden;
+      }
+
+      .filter-item {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+        vertical-align: baseline;
+        cursor: pointer;
+      }
+
+      .filter-title {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+        vertical-align: baseline;
+      }
+
+      .filter-item:focus,
+      .filter-item:hover {
+        background-color: rgb(186, 185, 185);
+      }
+
+      .filter-title {
+        width: 100%;
+        padding: 10px;
+        padding-bottom: 2px;
+        text-align: center;
+        vertical-align: baseline;
+      }
+
+      a{
+        text-decoration:none;
+        color: white;
+      }
+
       #titleDiv {
         padding: 10px;
         background-color: #002e02;
+      }
+      #buttonDiv {
+        padding: 10px;
+        background-color: #0e7fb3;
+        border-radius: 50px;
+        
+      }
+
+      #buttonText{
+        font-size: 13pt;
+        font-style: bold;
+        padding: 5px;
+        color: white;
       }
 
       #titleText {
@@ -33,26 +84,6 @@
         font-style: italic;
         text-align: center;
         color: white;
-      }
-
-      .addRecordBtn {
-        position: absolute;
-        z-index: 10;
-        top: 10px;
-        right: 10px;
-        background-color: #ff6700;
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        font-size: 20px;
-        cursor: pointer;
-        text-decoration: none;
-        
-      }
-
-      .addRecordBtn:hover {
-         background-color: #a74c02;
       }
      </style>
 
@@ -72,8 +103,9 @@
           "esri/Basemap", //added to access outdoor basemap
           "esri/widgets/BasemapGallery",
           "esri/widgets/Legend",
-          "esri/portal/PortalItem" ],//add basemap by portal id
-          (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem) => {
+          "esri/portal/PortalItem",
+          "esri/core/reactiveUtils"],//add basemap by portal id
+          (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem, reactiveUtils) => {
 
         //adding API Key
         esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurM9-pAcf23W5yt8y2jTB2KTwD4hT3CaM8-Mvb-G6W0-FbKKJwDpQ0cTuz8ad9bk85eRHLaCQSOXeTWmVs6KrlSeTmUIV_CeSLZU9iFOgMOm1EZ1v4DRnSZrUX0m2TijzADbCnEfVjEKlR1VxKatOP7TtgtF9pOioiaaa_i8dWQaF1i44srbj6D8QHWP3BuFMF2T7FeUq-Zl0Jj1Vx_pn69Izppz5yf-tiFNC-kd59kQ0AT1_HEBEBKB6";
@@ -134,15 +166,6 @@
         // Add Expand widget to the top-right corner
         view.ui.add(bgexpand, "bottom-right");
 
-        //create feature layer from Survey123 layer
-        const layer = new FeatureLayer({
-            
-        //URL to the service
-            url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_f1d15728122341438676b1212d3d706b_results/FeatureServer"
-        });
-
-        //add layer to map
-        map.add(layer);
 
         //create renderer for WI counties layer
         const countyRenderer = {
@@ -238,6 +261,98 @@
 
         map.add(zonesLayer);
 
+        const resultsRenderer = {
+            type: "simple",
+            symbol: {
+                type: "simple-marker",
+                size: 8,
+                color: [5, 247, 235],
+                outline:{
+                   color: [255, 255, 255],
+                   width: 1
+                } 
+            },
+        }
+        //create feature layer from Survey123 layer
+        const layer = new FeatureLayer({
+            //URL to the service
+                url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_f1d15728122341438676b1212d3d706b_results/FeatureServer",
+                outFields: ["_date"],
+                renderer: resultsRenderer,
+                title: "White Deer Sighting"  
+            });
+    
+            //add layer to map
+            map.add(layer);
+        
+        
+        const yearElement = document.getElementById("year-filter");
+ 
+        
+        const filterByYear = (event) => {
+        
+            // determine filter definition based on the selected type
+            const selectedYear = event.target.getAttribute("data-year");
+            if(!selectedYear){
+                return; //do not filter if option hasn't been clicked
+            }
+            let filterDef = "";
+            switch(selectedYear) {
+                case "2020":
+                    filterDef = "_date >= timestamp '2020-01-01 00:00:00.000' And _date <= timestamp '2020-12-31 00:00:00.000'";
+                    break;
+        
+                case "2021":
+                    filterDef = "_date >= timestamp '2021-01-01 00:00:00.000' And _date <= timestamp '2021-12-31 00:00:00.000'";
+                    break;
+
+                case "2022":
+                    filterDef = "_date >= timestamp '2022-01-01 00:00:00.000' And _date <= timestamp '2022-12-31 00:00:00.000'";
+                    break;
+                
+                case "2023":
+                    filterDef = "_date >= timestamp '2023-01-01 00:00:00.000' And _date <= timestamp '2023-12-31 00:00:00.000'";
+                    break;
+
+                case "2024":
+                    filterDef = "_date >= timestamp '2024-01-01 00:00:00.000' And _date <= timestamp '2024-12-31 00:00:00.000'";
+                    break;
+                default:
+            }
+            yearLayerView.featureEffect = {
+                filter: {
+                    where: filterDef
+                },
+                excludedEffect: "opacity(20%)"
+            };  
+        };
+
+        // click event handler for year choices
+        yearElement.addEventListener("click", filterByYear); 
+
+        view.whenLayerView(layer).then((layerView) => {
+            yearLayerView = layerView;
+        })
+        
+        yearElement.style.visibility = "visible";
+        const yearExpand = new Expand({
+            view: view,
+            content: yearElement,
+            expandIcon: "file",
+            expanded: "true",
+            expandTooltip: "Filter"
+        });
+
+        reactiveUtils.when(
+            () => !yearExpand.expanded,
+            () => {
+                yearLayerView.featureEffect = null;
+            }
+        );
+
+        view.ui.add(yearExpand, "top-left");
+
+    
         //add legend
         const legend = new Legend({
             view: view
@@ -257,20 +372,36 @@
       view.ui.add("titleDiv", {
         position: "top-left",
         index: 0});
-        
+
+      view.ui.add("buttonDiv",{
+        position: "top-right",
+        index: 0});  
         });
+
+      
       </script>
 
   </head>
   <body>
-
-    <a href="https://arcg.is/1uWLev1"target="_blank" class="addRecordBtn">Add Record</a>
-
+    
     <div id="viewDiv"></div>
+
+    <div id="year-filter" class="esri-widget">
+        <div class="filter-title"><b>Filter by Year</b></div>
+        <div class="filter-item" data-year="2020">2020</div>
+        <div class="filter-item" data-year="2021">2021</div>
+        <div class="filter-item" data-year="2022">2022</div>
+        <div class="filter-item" data-year="2023">2023</div>
+        <div class="filter-item" data-year="2024">2024</div>
+      </div>
+   
     <div id="titleDiv" class="esri-widget">
         <div id="titleText">Wisconsin's White Deer</div>
         <div id="subtitle">Report and explore white deer sightings</div>
       </div>
+    <div id="buttonDiv" class="esri-widget">
+      <div id="buttonText"><a href="https://arcg.is/1uWLev1">Add Record</a></div>
+    </div>
 
   </body>
 </html>

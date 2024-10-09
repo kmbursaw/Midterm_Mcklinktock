@@ -61,7 +61,7 @@
       }
       #buttonDiv {
         padding: 10px;
-        background-color: #0e7fb3;
+        background-color: #110eb3;
         border-radius: 50px;
         
       }
@@ -103,9 +103,11 @@
           "esri/Basemap", //added to access outdoor basemap
           "esri/widgets/BasemapGallery",
           "esri/widgets/Legend",
-          "esri/portal/PortalItem",
-          "esri/core/reactiveUtils"],//add basemap by portal id
-          (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem, reactiveUtils) => {
+          "esri/portal/PortalItem", //add basemap by portal id
+          "esri/core/reactiveUtils",
+          "esri/PopupTemplate"
+          ],
+          (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem, reactiveUtils, PopupTemplate) => {
 
         //adding API Key
         esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurM9-pAcf23W5yt8y2jTB2KTwD4hT3CaM8-Mvb-G6W0-FbKKJwDpQ0cTuz8ad9bk85eRHLaCQSOXeTWmVs6KrlSeTmUIV_CeSLZU9iFOgMOm1EZ1v4DRnSZrUX0m2TijzADbCnEfVjEKlR1VxKatOP7TtgtF9pOioiaaa_i8dWQaF1i44srbj6D8QHWP3BuFMF2T7FeUq-Zl0Jj1Vx_pn69Izppz5yf-tiFNC-kd59kQ0AT1_HEBEBKB6";
@@ -135,7 +137,8 @@
 
         // Add the locate widget to the top left corner of the view
         view.ui.add(locateBtn, {
-            position: "top-left"
+            position: "top-left",
+            index: 1
         });
 
         //add search widget
@@ -160,11 +163,12 @@
         const bgexpand = new Expand({
             view: view,
             content: basemapGallery,
+            index: 2
             
         });
       
         // Add Expand widget to the top-right corner
-        view.ui.add(bgexpand, "bottom-right");
+        view.ui.add(bgexpand, "top-left");
 
 
         //create renderer for WI counties layer
@@ -222,28 +226,28 @@
                 "value" : "Northern Forest Zone",
                 "symbol" : {
                     "type": "simple-fill",
-                    "color": "rgba(219,0,26,0.4)",
+                    "color": "rgba(219,0,26,0.3)",
                     "outline": null,
                     }
             },{
                 "value" : "Central Farmland Zone",
                 "symbol" : {
                     "type": "simple-fill",
-                    "color": "rgba(0,18,219,0.4)",
+                    "color": "rgba(0,18,219,0.3)",
                     "outline": null,
                     }
             },{
                 "value" : "Central Forest Zone",
                 "symbol" : {
                     "type": "simple-fill",
-                    "color": "rgba(219,197,0,0.4)",
+                    "color": "rgba(219,197,0,0.3)",
                     "outline": null,
                     }
             },{
                 "value" : "Southern Farmland Zone",
                 "symbol" : {
                     "type": "simple-fill",
-                    "color": "rgba(124,0,219,0.4)",
+                    "color": "rgba(124,0,219,0.3)",
                     "outline": null,
                     }
 
@@ -266,21 +270,38 @@
             symbol: {
                 type: "simple-marker",
                 size: 8,
-                color: [5, 247, 235],
+                color: [245, 152, 47],
                 outline:{
                    color: [255, 255, 255],
                    width: 1
                 } 
             },
+        };
+
+        const resultsPopup = {
+            title: "White Deer Sighting",
+            content: [
+                {type: "text",
+                text: "Date: {_date}"    
+                },
+                {type: "attachments"},
+
+            ]
         }
+        
         //create feature layer from Survey123 layer
         const layer = new FeatureLayer({
             //URL to the service
                 url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_f1d15728122341438676b1212d3d706b_results/FeatureServer",
                 outFields: ["_date"],
                 renderer: resultsRenderer,
-                title: "White Deer Sighting"  
+                title: "White Deer Sighting", 
+                popupTemplate: resultsPopup
             });
+
+        
+
+           
     
             //add layer to map
             map.add(layer);
@@ -323,7 +344,7 @@
                 filter: {
                     where: filterDef
                 },
-                excludedEffect: "opacity(20%)"
+                excludedEffect: "opacity(30%)"
             };  
         };
 
@@ -338,9 +359,10 @@
         const yearExpand = new Expand({
             view: view,
             content: yearElement,
-            expandIcon: "file",
+            expandIcon: "filter",
             expanded: "true",
-            expandTooltip: "Filter"
+            expandTooltip: "Filter",
+            mode: "floating"
         });
 
         reactiveUtils.when(
@@ -350,7 +372,7 @@
             }
         );
 
-        view.ui.add(yearExpand, "top-left");
+        view.ui.add(yearExpand, "bottom-right");
 
     
         //add legend
@@ -400,7 +422,7 @@
         <div id="subtitle">Report and explore white deer sightings</div>
       </div>
     <div id="buttonDiv" class="esri-widget">
-      <div id="buttonText"><a href="https://arcg.is/1uWLev1">Add Record</a></div>
+      <div id="buttonText"><a href="https://arcg.is/1uWLev1">Report Sighting</a></div>
     </div>
 
   </body>

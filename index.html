@@ -96,7 +96,6 @@
         require(["esri/config", 
           "esri/Map",
           "esri/views/MapView",
-          "esri/widgets/Locate",
           "esri/widgets/Search",
           "esri/layers/FeatureLayer",
           "esri/widgets/Expand",
@@ -104,10 +103,11 @@
           "esri/widgets/BasemapGallery",
           "esri/widgets/Legend",
           "esri/portal/PortalItem", //add basemap by portal id
-          "esri/core/reactiveUtils",
-          "esri/PopupTemplate"
+          "esri/core/reactiveUtils", //clear filter
+          "esri/PopupTemplate",
+          "esri/popup/support/FieldInfoFormat" //used to format date field in popup
           ],
-          (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem, reactiveUtils, PopupTemplate) => {
+          (esriConfig, Map, MapView, Search, FeatureLayer, Expand, Basemap, BasemapGallery, Legend, PortalItem, reactiveUtils, PopupTemplate, FieldInfoFormat) => {
 
         //adding API Key
         esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurM9-pAcf23W5yt8y2jTB2KTwD4hT3CaM8-Mvb-G6W0-FbKKJwDpQ0cTuz8ad9bk85eRHLaCQSOXeTWmVs6KrlSeTmUIV_CeSLZU9iFOgMOm1EZ1v4DRnSZrUX0m2TijzADbCnEfVjEKlR1VxKatOP7TtgtF9pOioiaaa_i8dWQaF1i44srbj6D8QHWP3BuFMF2T7FeUq-Zl0Jj1Vx_pn69Izppz5yf-tiFNC-kd59kQ0AT1_HEBEBKB6";
@@ -130,17 +130,7 @@
             zoom: 7
         });
 
-        //add locate button
-        const locateBtn = new Locate({
-            view: view
-        });
-
-        // Add the locate widget to the top left corner of the view
-        view.ui.add(locateBtn, {
-            position: "top-left",
-            index: 1
-        });
-
+       
         //add search widget
         const searchWidget = new Search({
             view:view
@@ -151,7 +141,7 @@
             content: searchWidget
         });
 
-        //add search widget to top right corner
+        //add search widget to top left corner
         view.ui.add(searchExpand, "top-left");
 
         //create basemape gallery with default esri basemaps
@@ -167,8 +157,8 @@
             
         });
       
-        // Add Expand widget to the top-right corner
-        view.ui.add(bgexpand, "top-left");
+        // Add Expand widget to the bottom-right corner
+        view.ui.add(bgexpand, "bottom-right");
 
 
         //create renderer for WI counties layer
@@ -196,7 +186,7 @@
             labelExpressionInfo: {
             expression: "$feature.COUNTY_NAME" //label by county name
             },
-            maxScale: 0,
+            maxScale: 0, //set zoom scale of labels
             minScale: 2500000,
             
         };
@@ -219,11 +209,11 @@
         const zonesRenderer = {
             "type": "unique-value",
             "legendOptions": {
-                "title": "Deer Management Zones"
+                "title": "Deer Management Zones" //title for legend
             },
-            "field" : "DEER_MANAGEMENT_ZONE",
+            "field" : "DEER_MANAGEMENT_ZONE", //use zones for unique value polygon fills
             "uniqueValueInfos" :[{
-                "value" : "Northern Forest Zone",
+                "value" : "Northern Forest Zone", //create label used in legend
                 "symbol" : {
                     "type": "simple-fill",
                     "color": "rgba(219,0,26,0.3)",
@@ -265,6 +255,7 @@
 
         map.add(zonesLayer);
 
+        //create renderer for results layer from Survey123
         const resultsRenderer = {
             type: "simple",
             symbol: {
@@ -277,39 +268,55 @@
                 } 
             },
         };
-
-        const resultsPopup = {
-            title: "White Deer Sighting",
-            content: [
-                {type: "text",
-                text: "Date: {_date}"    
-                },
-                {type: "attachments"},
-
-            ]
-        }
         
         //create feature layer from Survey123 layer
         const layer = new FeatureLayer({
             //URL to the service
                 url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_f1d15728122341438676b1212d3d706b_results/FeatureServer",
-                outFields: ["_date"],
+                
                 renderer: resultsRenderer,
-                title: "White Deer Sighting", 
-                popupTemplate: resultsPopup
+                title: "White Deer Sighting"
+                
             });
+            //create popupTemplate for results layer
+            layer.popupTemplate = {
+            title: "White Deer Sighting",
+            content: [
+                
+                {type: "text",
+                text: "<b>Date:</b> {_date}",
+                },
+                {type: "text",
+                text: "<b>County:</b> {county}"
+                },
+                {type: "text",
+                text: "<b>Deer Management Zone:</b> {deer_management_zone}"
+                },
+                {type: "text",
+                text: "<b>Notes:</b> {additional_information_optional}"
+                },
+                {type: "attachments"}, //add any photo attachments from Survey123
 
+            ],
+            //use fieldInfos to format date field to match Survey123 input
+            fieldInfos:[{
+                fieldName: "_date",
+                format:{
+                        dateFormat: 'long-month-year'
+                        }
+                        }],
+
+            lastEditInfoEnabled: false //removed editor info from bottom of popup
+            }
         
-
            
-    
             //add layer to map
             map.add(layer);
         
         
         const yearElement = document.getElementById("year-filter");
  
-        
+        //create filter
         const filterByYear = (event) => {
         
             // determine filter definition based on the selected type
@@ -318,7 +325,7 @@
                 return; //do not filter if option hasn't been clicked
             }
             let filterDef = "";
-            switch(selectedYear) {
+            switch(selectedYear) { //define dates for each year
                 case "2020":
                     filterDef = "_date >= timestamp '2020-01-01 00:00:00.000' And _date <= timestamp '2020-12-31 00:00:00.000'";
                     break;
@@ -340,7 +347,7 @@
                     break;
                 default:
             }
-            yearLayerView.featureEffect = {
+            yearLayerView.featureEffect = { //change opacity of features not in selected year
                 filter: {
                     where: filterDef
                 },
@@ -355,16 +362,20 @@
             yearLayerView = layerView;
         })
         
+        //set up UI items
         yearElement.style.visibility = "visible";
         const yearExpand = new Expand({
             view: view,
             content: yearElement,
-            expandIcon: "filter",
-            expanded: "true",
-            expandTooltip: "Filter",
-            mode: "floating"
+            expandIcon: "filter", //icon won't change
+            expandTooltip: "Filter by Year", //text to appear when hovering
+            collapseTooltip: "Collapse to reset",
+            mode: "floating", //widget will float regardless of browser size
+            expanded: "true", //expand filter by default since icon isn't working
+            autoCollapse: true //widget will close when view changes
+        
         });
-
+        //clear filter when user closes the expand widget
         reactiveUtils.when(
             () => !yearExpand.expanded,
             () => {
@@ -372,7 +383,7 @@
             }
         );
 
-        view.ui.add(yearExpand, "bottom-right");
+        view.ui.add(yearExpand, "top-left"); //add to view
 
     
         //add legend
@@ -385,19 +396,20 @@
             view: view,
             content: legend,
             expanded: true, //expand legend by default
-            mode: "floating" //widget will float regardless of browser size
+            mode: "floating", //widget will float regardless of browser size
+            autoCollapse: true //widget will close when view changes
         });
     
       //add legend to bottom left corner of the view
       view.ui.add(legendexpand, "bottom-left");
 
-      view.ui.add("titleDiv", {
+      view.ui.add("titleDiv", { //add title to map
         position: "top-left",
         index: 0});
 
-      view.ui.add("buttonDiv",{
-        position: "top-right",
-        index: 0});  
+      view.ui.add("buttonDiv",{ //add button under title
+        position: "top-left",
+        index: 1});  
         });
 
       
@@ -408,7 +420,7 @@
     
     <div id="viewDiv"></div>
 
-    <div id="year-filter" class="esri-widget">
+    <div id="year-filter" class="esri-widget"> <!-- create filter options -->
         <div class="filter-title"><b>Filter by Year</b></div>
         <div class="filter-item" data-year="2020">2020</div>
         <div class="filter-item" data-year="2021">2021</div>
@@ -417,11 +429,11 @@
         <div class="filter-item" data-year="2024">2024</div>
       </div>
    
-    <div id="titleDiv" class="esri-widget">
+    <div id="titleDiv" class="esri-widget"> <!--create title using esri widget class-->
         <div id="titleText">Wisconsin's White Deer</div>
         <div id="subtitle">Report and explore white deer sightings</div>
       </div>
-    <div id="buttonDiv" class="esri-widget">
+    <div id="buttonDiv" class="esri-widget"> <!--create button using esri widget class, more responsive to view changes-->
       <div id="buttonText"><a href="https://arcg.is/1uWLev1">Report Sighting</a></div>
     </div>
 
